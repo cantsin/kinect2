@@ -10,23 +10,27 @@
 	<canvas id="bodyCanvas" width="512" height="424"></canvas>
 	<script src="/socket.io/socket.io.js"></script>
 	<script>
-		var socket = io.connect('/');
-		var canvas = document.getElementById('bodyCanvas');
-		var ctx = canvas.getContext('2d');
-		var colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff'];
+var socket = io.connect('/');
+var canvas = document.getElementById("bodyCanvas");
+var ctx = canvas.getContext('2d');
+var colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff'];
 
-		socket.on('bodyFrame', function(bodies){
-			ctx.clearRect(0, 0, canvas.width, canvas.height);
-			var index = 0;
-			bodies.forEach(function(body){
-				for(var jointName in body.joints) {
-					var joint = body.joints[jointName];
-					ctx.fillStyle = colors[index];
-					ctx.fillRect(joint.x, joint.y, 10, 10);
-				}
-				index++;
-			});
-		});
+socket.on('bodyFrame', function(bodies){
+    var index = 0;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    bodies.forEach(function(body){
+	for(var jointName in body.joints) {
+	    var joint = body.joints[jointName];
+	    ctx.fillStyle = colors[index];
+	    ctx.fillRect(joint.x, joint.y, 10, 10);
+	}
+	index++;
+    });
+    socket.emit("refresh", "callback hell", function(data) {
+        //console.log(data);
+        // no-op.
+    });
+});
 	</script>
 </body>
 </html>
