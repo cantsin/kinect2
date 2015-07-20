@@ -18,13 +18,7 @@ if(kinect.open()) {
 
     kinect.on('bodyFrame', function(bodies){
 	io.sockets.emit('bodyFrame', bodies);
-    });
-
-    // XXX: just flush the damn socket?
-    io.on("connection", function(socket) {
-        socket.on("refresh", function(name, fn) {
-            fn(name);
-        });
+        io.flush();
     });
 
     kinect.openBodyReader();
