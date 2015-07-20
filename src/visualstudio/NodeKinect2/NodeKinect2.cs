@@ -1,4 +1,4 @@
-﻿using System.Threading.Tasks;
+using System.Threading.Tasks;
 using Microsoft.Kinect;
 using Microsoft.Kinect.Tools;
 using System;
@@ -124,6 +124,8 @@ namespace NodeKinect2
         private Func<object, Task<object>> infraredFrameCallback;
         private Func<object, Task<object>> longExposureInfraredFrameCallback;
 
+        private bool isReplaying = false;
+        private String replayFilePath = null;
 
         public NodeKinect(dynamic input)
         {
@@ -145,28 +147,38 @@ namespace NodeKinect2
             return false;
         }
 
-        public async Task<object> Replay(dynamic input)
+        public void ReplayForever()
         {
-            var filePath = (String)input.filePath;
-            this.logCallback("Replay " + filePath);
-            using (KStudioClient client = KStudio.CreateClient())
+            try
             {
-                client.ConnectToService();
-                try {
-                    using (KStudioPlayback playback = client.CreatePlayback(filePath))
+                using (KStudioClient client = KStudio.CreateClient())
+                {
+                    client.ConnectToService();
+                    while (true)
                     {
+                        KStudioPlayback playback = client.CreatePlayback(this.replayFilePath);
                         playback.LoopCount = 0;
                         playback.Start();
+                        this.isReplaying = true;
                         while (playback.State == KStudioPlaybackState.Playing)
                         {
                             Thread.Sleep(500);
                         }
                     }
-                } catch (Exception e) {
-                    logCallback("Replay exception: " + e.Message);
+                    client.DisconnectFromService();
                 }
-                client.DisconnectFromService();
+            } catch (Exception e) {
+                logCallback("ReplayForever exception: " + e.Message);
             }
+        }
+
+        public async Task<object> Replay(dynamic input)
+        {
+            this.replayFilePath = (String)input.filePath;
+            this.logCallback("Replay " + this.replayFilePath);
+            ThreadStart work = this.ReplayForever;
+            Thread thread = new Thread(work);
+            thread.Start();
             return true;
         }
 
