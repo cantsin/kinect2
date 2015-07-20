@@ -1,15 +1,16 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.Kinect;
+using Microsoft.Kinect.Tools;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Windows;
+using System.Threading;
 
 namespace NodeKinect2
 {
     public class Startup
     {
-
         private static NodeKinect instance;
 
         public async Task<object> Invoke(dynamic input)
@@ -24,6 +25,11 @@ namespace NodeKinect2
         public async Task<object> Open(dynamic input)
         {
             return instance.Open(input);
+        }
+
+        public async Task<object> Replay(dynamic input)
+        {
+            return instance.Replay(input);
         }
 
         public async Task<object> OpenDepthReader(dynamic input)
@@ -117,7 +123,7 @@ namespace NodeKinect2
         private Func<object, Task<object>> colorFrameCallback;
         private Func<object, Task<object>> infraredFrameCallback;
         private Func<object, Task<object>> longExposureInfraredFrameCallback;
-        
+
 
         public NodeKinect(dynamic input)
         {
@@ -137,6 +143,31 @@ namespace NodeKinect2
                 return true;
             }
             return false;
+        }
+
+        public async Task<object> Replay(dynamic input)
+        {
+            var filePath = (String)input.filePath;
+            this.logCallback("Replay " + filePath);
+            using (KStudioClient client = KStudio.CreateClient())
+            {
+                client.ConnectToService();
+                try {
+                    using (KStudioPlayback playback = client.CreatePlayback(filePath))
+                    {
+                        playback.LoopCount = 0;
+                        playback.Start();
+                        while (playback.State == KStudioPlaybackState.Playing)
+                        {
+                            Thread.Sleep(500);
+                        }
+                    }
+                } catch (Exception e) {
+                    logCallback("Replay exception: " + e.Message);
+                }
+                client.DisconnectFromService();
+            }
+            return true;
         }
 
         public async Task<object> OpenDepthReader(dynamic input)
@@ -282,7 +313,7 @@ namespace NodeKinect2
             {
                 if (depthFrame != null)
                 {
-                    // the fastest way to process the body index data is to directly access 
+                    // the fastest way to process the body index data is to directly access
                     // the underlying buffer
                     using (Microsoft.Kinect.KinectBuffer depthBuffer = depthFrame.LockImageBuffer())
                     {
@@ -313,7 +344,7 @@ namespace NodeKinect2
         }
 
         /// <summary>
-        /// Directly accesses the underlying image buffer of the DepthFrame to 
+        /// Directly accesses the underlying image buffer of the DepthFrame to
         /// create a displayable bitmap.
         /// This function requires the /unsafe compiler option as we make use of direct
         /// access to the native memory pointed to by the depthFrameData pointer.
@@ -381,7 +412,7 @@ namespace NodeKinect2
             {
                 if (infraredFrame != null)
                 {
-                    // the fastest way to process the body index data is to directly access 
+                    // the fastest way to process the body index data is to directly access
                     // the underlying buffer
                     using (Microsoft.Kinect.KinectBuffer infraredBuffer = infraredFrame.LockImageBuffer())
                     {

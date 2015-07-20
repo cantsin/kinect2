@@ -11,14 +11,17 @@ if(kinect.open()) {
     console.log('Server listening on port 8000');
     console.log('Point your browser to http://localhost:8000');
 
-    // app.get('/', function(req, res) {
-    //     res.sendFile(__dirname + '/public/index.html');
-    // });
     app.use(express.static(__dirname + '/public'));
 
     kinect.on('bodyFrame', function(bodies){
 	io.sockets.emit('bodyFrame', bodies);
         io.flush();
+    });
+
+    io.on("connection", function(socket) {
+        socket.on("refresh", function(name, fn) {
+            fn(name);
+        });
     });
 
     kinect.openBodyReader();
