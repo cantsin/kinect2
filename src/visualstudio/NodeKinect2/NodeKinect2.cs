@@ -65,6 +65,9 @@ namespace NodeKinect2
 
     public class NodeKinect
     {
+        const int LedWidth = 640; //192;
+        const int LedHeight = 360; //320;
+
         private KinectSensor kinectSensor = null;
 
         private FrameDescription depthFrameDescription = null;
@@ -80,6 +83,7 @@ namespace NodeKinect2
         private ColorFrameReader colorFrameReader = null;
         private FrameDescription colorFrameDescription = null;
         private byte[] colorPixels = null;
+        private byte[] truncatedColorPixels = null;
         private bool processingColorFrame = false;
 
         private InfraredFrameReader infraredFrameReader = null;
@@ -216,6 +220,7 @@ namespace NodeKinect2
             this.colorFrameReader = this.kinectSensor.ColorFrameSource.OpenReader();
             this.colorFrameReader.FrameArrived += this.ColorReader_ColorFrameArrived;
             this.colorPixels = new byte[4 * this.colorFrameDescription.Width * this.colorFrameDescription.Height];
+            this.truncatedColorPixels = new byte[4 * NodeKinect.LedWidth * NodeKinect.LedHeight];
 
             return true;
         }
@@ -402,11 +407,34 @@ namespace NodeKinect2
                         colorFrame.CopyConvertedFrameDataToArray(this.colorPixels, ColorImageFormat.Rgba);
                         colorFrameProcessed = true;
                     }
+
+                    // convert to LED dimensions (mostly ripped from the old js code)
+                    try
+                    {
+                        var y2 = 0;
+                        var compression = 3;
+                        for(var y = 0; y < this.colorFrameDescription.Height; y += compression) {
+                            var x2 = 0;
+                            for(var x = 0; x < this.colorFrameDescription.Width; x += compression) {
+                                var i = 4 * (y * this.colorFrameDescription.Width + x);
+                                var j = 4 * (y2 * NodeKinect.LedWidth + x2);
+                                this.truncatedColorPixels[j] = this.colorPixels[i];
+                                this.truncatedColorPixels[j+1] = this.colorPixels[i+1];
+                                this.truncatedColorPixels[j+2] = this.colorPixels[i+2];
+                                this.truncatedColorPixels[j+3] = this.colorPixels[i+3];
+                                x2++;
+                            }
+                            y2++;
+                        }
+                    }
+                    catch (Exception exc) {
+                        this.logCallback("colorFrame exception: " + exc.Message);
+                    }
                 }
             }
             if (colorFrameProcessed)
             {
-                this.colorFrameCallback(this.colorPixels);
+                this.colorFrameCallback(this.truncatedColorPixels);
             }
             this.processingColorFrame = false;
         }
