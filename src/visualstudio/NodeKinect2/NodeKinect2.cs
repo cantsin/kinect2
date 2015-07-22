@@ -65,8 +65,8 @@ namespace NodeKinect2
 
     public class NodeKinect
     {
-        const int LedWidth = 640; //192;
-        const int LedHeight = 360; //320;
+        const int LedWidth = 192;
+        const int LedHeight = 320;
 
         private KinectSensor kinectSensor = null;
 
@@ -413,12 +413,13 @@ namespace NodeKinect2
                     {
                         var y2 = 0;
                         var compression = 3;
-                        for(var y = 0; y < this.colorFrameDescription.Height; y += compression) {
+                        var offset = (((this.colorFrameDescription.Width / compression) - NodeKinect.LedWidth) / 2) * compression;
+                        for(var y = 0; y < NodeKinect.LedHeight * compression; y += compression) {
                             var x2 = 0;
-                            for(var x = 0; x < this.colorFrameDescription.Width; x += compression) {
+                            for(var x = offset; x < (NodeKinect.LedWidth * compression) + offset; x += compression) {
                                 var i = 4 * (y * this.colorFrameDescription.Width + x);
                                 var j = 4 * (y2 * NodeKinect.LedWidth + x2);
-                                this.truncatedColorPixels[j] = this.colorPixels[i];
+                                this.truncatedColorPixels[j+0] = this.colorPixels[i+0];
                                 this.truncatedColorPixels[j+1] = this.colorPixels[i+1];
                                 this.truncatedColorPixels[j+2] = this.colorPixels[i+2];
                                 this.truncatedColorPixels[j+3] = this.colorPixels[i+3];
