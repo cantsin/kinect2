@@ -18,20 +18,35 @@ if(kinect.open()) {
 
     app.use(express.static(__dirname + '/public'));
 
-    var compressing = false;
-    kinect.on('colorFrame', function(data){
+    var colorCompressing = false;
+    kinect.on('colorFrame', function(data) {
 	//compress the depth data using zlib
-	if(!compressing) {
-	    compressing = true;
+	if(!colorCompressing) {
+	    colorCompressing = true;
 
 	    zlib.deflate(data, function(err, result){
 		if(!err) {
 		    io.sockets.emit('colorFrame', result.toString('base64'));
 		}
-		compressing = false;
+		colorCompressing = false;
 	    });
 	}
     });
 
+    var depthCompressing = false;
+    kinect.on('depthFrame', function(data) {
+        //compress the depth data using zlib
+        if(!depthCompressing) {
+            depthCompressing = true;
+            zlib.deflate(data, function(err, result){
+        	if(!err) {
+        	    io.sockets.emit('depthFrame', result.toString('base64'));
+        	}
+        	depthCompressing = false;
+            });
+        }
+    });
+
     kinect.openColorReader();
+    kinect.openDepthReader();
 }

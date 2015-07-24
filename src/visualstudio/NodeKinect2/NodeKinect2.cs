@@ -78,6 +78,7 @@ namespace NodeKinect2
         /// </summary>
         private const int MapDepthToByte = 8000 / 256;
         private byte[] depthPixels = null;
+        private byte[] truncatedDepthPixels = null;
         private bool processingDepthFrame = false;
 
         private ColorFrameReader colorFrameReader = null;
@@ -89,11 +90,13 @@ namespace NodeKinect2
         private InfraredFrameReader infraredFrameReader = null;
         private FrameDescription infraredFrameDescription = null;
         private byte[] infraredPixels = null;
+        private byte[] truncatedInfraredPixels = null;
         private bool processingInfraredFrame = false;
 
         private LongExposureInfraredFrameReader longExposureInfraredFrameReader = null;
         private FrameDescription longExposureInfraredFrameDescription = null;
         private byte[] longExposureInfraredPixels = null;
+        private byte[] truncatedLongExposureInfraredPixels = null;
         private bool processingLongExposureInfraredFrame = false;
 
         /// <summary>
@@ -202,6 +205,7 @@ namespace NodeKinect2
             this.depthFrameReader = this.kinectSensor.DepthFrameSource.OpenReader();
             this.depthFrameReader.FrameArrived += this.DepthReader_FrameArrived;
             this.depthPixels = new byte[this.depthFrameDescription.Width * this.depthFrameDescription.Height];
+            this.truncatedDepthPixels = new byte[4 * NodeKinect.LedWidth * NodeKinect.LedHeight];
             return true;
         }
 
@@ -241,6 +245,7 @@ namespace NodeKinect2
             this.infraredFrameReader = this.kinectSensor.InfraredFrameSource.OpenReader();
             this.infraredFrameReader.FrameArrived += this.InfraredReader_FrameArrived;
             this.infraredPixels = new byte[this.infraredFrameDescription.Width * this.infraredFrameDescription.Height];
+            this.truncatedInfraredPixels = new byte[4 * NodeKinect.LedWidth * NodeKinect.LedHeight];
             return true;
         }
 
@@ -260,6 +265,7 @@ namespace NodeKinect2
             this.longExposureInfraredFrameReader = this.kinectSensor.LongExposureInfraredFrameSource.OpenReader();
             this.longExposureInfraredFrameReader.FrameArrived += this.LongExposureInfraredReader_FrameArrived;
             this.longExposureInfraredPixels = new byte[this.longExposureInfraredFrameDescription.Width * this.longExposureInfraredFrameDescription.Height];
+            this.truncatedLongExposureInfraredPixels = new byte[4 * NodeKinect.LedWidth * NodeKinect.LedHeight];
             return true;
         }
 
@@ -315,6 +321,25 @@ namespace NodeKinect2
                 this.kinectSensor = null;
             }
             return true;
+        }
+
+        // given a 512x424 buffer, resize to LED dimensions
+        private void Rescale(byte[] buffer)
+        {
+            // if we downscale 512x424 3x, the resulting resolution is
+            // 170.66x141.33 -- this 'covers' 640x360 (3.75x, 2.55y).
+            // we want to truncate to 192x320.
+
+            // the result is a 52x126 buffer.
+            var x = 52;
+            var y = 126;
+            var offsetWidth = 60;
+            var offsetHeight = 0;
+
+
+
+            // 3,4,4,4,3,4,4,4... for width
+            // 2,3,2,3,2,3,2,3... for height
         }
 
         private void DepthReader_FrameArrived(object sender, DepthFrameArrivedEventArgs e)
