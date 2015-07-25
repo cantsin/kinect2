@@ -205,7 +205,7 @@ namespace NodeKinect2
             this.depthFrameReader = this.kinectSensor.DepthFrameSource.OpenReader();
             this.depthFrameReader.FrameArrived += this.DepthReader_FrameArrived;
             this.depthPixels = new byte[this.depthFrameDescription.Width * this.depthFrameDescription.Height];
-            this.truncatedDepthPixels = new byte[4 * NodeKinect.LedWidth * NodeKinect.LedHeight];
+            this.truncatedDepthPixels = new byte[NodeKinect.LedWidth * NodeKinect.LedHeight];
             return true;
         }
 
@@ -245,7 +245,7 @@ namespace NodeKinect2
             this.infraredFrameReader = this.kinectSensor.InfraredFrameSource.OpenReader();
             this.infraredFrameReader.FrameArrived += this.InfraredReader_FrameArrived;
             this.infraredPixels = new byte[this.infraredFrameDescription.Width * this.infraredFrameDescription.Height];
-            this.truncatedInfraredPixels = new byte[4 * NodeKinect.LedWidth * NodeKinect.LedHeight];
+            this.truncatedInfraredPixels = new byte[NodeKinect.LedWidth * NodeKinect.LedHeight];
             return true;
         }
 
@@ -265,7 +265,7 @@ namespace NodeKinect2
             this.longExposureInfraredFrameReader = this.kinectSensor.LongExposureInfraredFrameSource.OpenReader();
             this.longExposureInfraredFrameReader.FrameArrived += this.LongExposureInfraredReader_FrameArrived;
             this.longExposureInfraredPixels = new byte[this.longExposureInfraredFrameDescription.Width * this.longExposureInfraredFrameDescription.Height];
-            this.truncatedLongExposureInfraredPixels = new byte[4 * NodeKinect.LedWidth * NodeKinect.LedHeight];
+            this.truncatedLongExposureInfraredPixels = new byte[NodeKinect.LedWidth * NodeKinect.LedHeight];
             return true;
         }
 
@@ -324,22 +324,82 @@ namespace NodeKinect2
         }
 
         // given a 512x424 buffer, resize to LED dimensions
-        private void Rescale(byte[] buffer)
+        private void Rescale(byte[] originalBuffer, byte[] outBuffer)
         {
             // if we downscale 512x424 3x, the resulting resolution is
             // 170.66x141.33 -- this 'covers' 640x360 (3.75x, 2.55y).
-            // we want to truncate to 192x320.
+            var downscaledX = 171;
+            var downscaledY = 142;
+            var outExtents = downscaledX * downscaledY;
+            var downscaled = new byte[outExtents];
+            var originalBufferWidth = 512; // hard coded for now
+            try
+            {
+                var y2 = 0;
+                var compression = 3;
+                for(var y = 0; y < downscaledY * compression; y += compression) {
+                    var x2 = 0;
+                    for(var x = 0; x < (downscaledX * compression); x += compression) {
+                        var i = (y * originalBufferWidth + x);
+                        var j = (y2 * downscaledX + x2);
+                        if(i >= originalBuffer.Length || j >= outExtents)
+                        {
+                            continue;
+                        }
+                        // NB. averaging looks ugly. do not do this.
+                        downscaled[j+0] = originalBuffer[i+0];
+                        // outBuffer[j+0] = originalBuffer[i+0];
+                        x2++;
+                    }
+                    y2++;
+                }
+            }
+            catch (Exception exc)
+            {
+                this.logCallback("Rescale exception (downsizing): " + exc.Message);
+            }
 
-            // the result is a 52x126 buffer.
-            var x = 52;
-            var y = 126;
+            // now that we have a downscaled buffer, we want to
+            // 'truncate' to the equivalent of 192x320. the result is
+            // a 52x126 buffer.
+            var realX = 52;
+            var realY = 126;
             var offsetWidth = 60;
             var offsetHeight = 0;
-
-
-
-            // 3,4,4,4,3,4,4,4... for width
-            // 2,3,2,3,2,3,2,3... for height
+            var index = 0;
+            var maxExtents = NodeKinect.LedHeight * NodeKinect.LedWidth;
+            try
+            {
+                for(var j=0; j<realY; j++)
+                {
+                    // 2,3,2,3,2,3,2,3... for height
+                    var extraH = (j%2)==0 ? 2: 3;
+                    for(var m=0; m<extraH; m++)
+                    {
+                        var obi = (j * downscaledX) + offsetWidth * 4;
+                        for(var i=0; i<realX; i++)
+                        {
+                            // 3,4,4,4,3,4,4,4... for width
+                            var extraW = (i%4)==0 ? 3 : 4;
+                            for(var n=0; n<extraW; n++)
+                            {
+                                if(index >= maxExtents)
+                                {
+                                    // we may be slightly over due to uneven sampling.
+                                    continue;
+                                }
+                                outBuffer[index+0] = downscaled[obi+0];
+                                index += 4;
+                            }
+                            obi += 4;
+                        }
+                    }
+                }
+            }
+            catch (Exception exc2)
+            {
+                this.logCallback("Rescale exception (truncating): " + exc2.Message);
+            }
         }
 
         private void DepthReader_FrameArrived(object sender, DepthFrameArrivedEventArgs e)
@@ -379,7 +439,8 @@ namespace NodeKinect2
 
             if (depthFrameProcessed)
             {
-                this.depthFrameCallback(this.depthPixels);
+                this.Rescale(this.depthPixels, this.truncatedDepthPixels);
+                this.depthFrameCallback(this.truncatedDepthPixels);
                 //this.RenderDepthPixels();
             }
             this.processingDepthFrame = false;
@@ -453,7 +514,8 @@ namespace NodeKinect2
                             y2++;
                         }
                     }
-                    catch (Exception exc) {
+                    catch (Exception exc)
+                    {
                         this.logCallback("colorFrame exception: " + exc.Message);
                     }
                 }
@@ -494,7 +556,8 @@ namespace NodeKinect2
 
             if (infraredFrameProcessed)
             {
-                this.infraredFrameCallback(this.infraredPixels);
+                this.Rescale(this.infraredPixels, this.truncatedInfraredPixels);
+                this.infraredFrameCallback(this.truncatedInfraredPixels);
             }
             this.processingInfraredFrame = false;
         }
@@ -526,7 +589,8 @@ namespace NodeKinect2
 
             if (longExposureInfraredFrameProcessed)
             {
-                this.longExposureInfraredFrameCallback(this.longExposureInfraredPixels);
+                this.Rescale(this.longExposureInfraredPixels, this.truncatedLongExposureInfraredPixels);
+                this.longExposureInfraredFrameCallback(this.truncatedLongExposureInfraredPixels);
             }
             this.processingLongExposureInfraredFrame = false;
         }
