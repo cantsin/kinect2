@@ -366,17 +366,18 @@ namespace NodeKinect2
             var realY = 126;
             var offsetWidth = 60;
             var offsetHeight = 0;
-            var index = 0;
             var maxExtents = NodeKinect.LedHeight * NodeKinect.LedWidth;
+            var line = 0;
             try
             {
                 for(var j=0; j<realY; j++)
                 {
                     // 2,3,2,3,2,3,2,3... for height
-                    var extraH = (j%2)==0 ? 2: 3;
+                    var extraH = (j%2)==0 ? 2 : 3;
                     for(var m=0; m<extraH; m++)
                     {
-                        var obi = (j * downscaledX) + offsetWidth * 4;
+                        var index = line * NodeKinect.LedWidth;
+                        var obi = (j * downscaledX) + offsetWidth;
                         for(var i=0; i<realX; i++)
                         {
                             // 3,4,4,4,3,4,4,4... for width
@@ -393,6 +394,7 @@ namespace NodeKinect2
                             }
                             obi++;
                         }
+                        line++;
                     }
                 }
             }
