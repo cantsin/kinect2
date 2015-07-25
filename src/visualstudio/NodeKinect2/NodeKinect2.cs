@@ -389,9 +389,9 @@ namespace NodeKinect2
                                     continue;
                                 }
                                 outBuffer[index+0] = downscaled[obi+0];
-                                index += 4;
+                                index++;
                             }
-                            obi += 4;
+                            obi++;
                         }
                     }
                 }
